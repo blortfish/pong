@@ -1,0 +1,11 @@
+{
+  "name": "tennis_game",
+  "version": "0.0.01",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "autoreload-server --default-pages \"index.{htm,html}\" -w \"**/**.{html,css,js}\" ./ 8008"
+  },
+  "author": "",
+  "license": "ISC"
+}
