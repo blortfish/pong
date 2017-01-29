@@ -1,18 +1,20 @@
 var constants = {
-    CANVAS_WIDTH: 800,
-    CANVAS_HEIGHT: 600,
-    FPS: 120,
+    CANVAS_BOUNDS: {
+        x: 800,
+        y: 600
+    },
+    FPS: 100,
     GAME_SPEED: 5,
     BALL_SIZE: 10,
     PADDLE_WIDTH: 10,
-    PADDLE_HEIGHT: 125,
+    PADDLE_HEIGHT: 100,
     SOUNDS: {
         BALL_BOUNCE: new Audio("sounds/paddle.wav")
     },
     CENTER_LINE_WIDTH: 2
 };
 
-(function ($) {
+(function ($, _) {
 
     var canvas, canvasDOM, canvasContext, renderingLoop, gameStateLoop;
     var mousePosition;
@@ -20,14 +22,18 @@ var constants = {
     var ballX,
         ballY,
         ballSpeedX,
-        ballSpeedY;
+        ballSpeedY,
+        score = {
+            player1: 0,
+            player2: 0
+        };
 
     function initCanvas() {
 
-        canvas = $('#game-canvas')
-            .attr("width", constants.CANVAS_WIDTH)
-            .attr("height", constants.CANVAS_HEIGHT);
-
+        canvas = $('#game-canvas').attr({
+            "width": constants.CANVAS_BOUNDS.x,
+            "height": constants.CANVAS_BOUNDS.y
+        });
         canvasDOM = canvas.get(0);
         canvasContext = canvasDOM.getContext("2d");
     }
@@ -49,39 +55,62 @@ var constants = {
 
     function drawCenterLine() {
         var dashSize = 75,
-            spaceSize = 25
-        dashes = constants.CANVAS_HEIGHT / 100;
+            spaceSize = 25;
+        var dashes = constants.CANVAS_BOUNDS.y / 100;
         for (var i = 0; i < dashes; i++) {
-            canvasContext.fillRect(constants.CANVAS_WIDTH / 2 - constants.CENTER_LINE_WIDTH / 2,
+            canvasContext.fillRect(constants.CANVAS_BOUNDS.x / 2 - constants.CENTER_LINE_WIDTH / 2,
                 i ? (dashSize + spaceSize) * i + spaceSize / 2 : spaceSize / 2, constants.CENTER_LINE_WIDTH, dashSize);
         }
     }
 
+    function drawScores() {
+        canvasContext.font = '20px tahoma';
+        canvasContext.fillText(score.player1.toString(), 50, 30);
+        canvasContext.fillText(score.player2.toString(), constants.CANVAS_BOUNDS.x - 50, 30);
+    }
+
     function updateBallState() {
+        ballWillContactRect({x : 0, y: 0}, constants.CANVAS_BOUNDS);
+
+    }
+
+    function ballWillContactRect(topLeftCoordinate, bottomRightCoordinate) {
         var xChanged = false;
         var yChanged = false;
-        if (ballX + (constants.BALL_SIZE / 2) + ballSpeedX > constants.CANVAS_WIDTH) { // right
-            ballX = constants.CANVAS_WIDTH - (constants.BALL_SIZE / 2);
+        var rightBallEdge = ballX + constants.BALL_SIZE / 2 + ballSpeedX;
+        var leftBallEdge = ballX - constants.BALL_SIZE / 2 + ballSpeedX;
+        var bottomBallEdge = ballY + constants.BALL_SIZE / 2 + ballSpeedY;
+        var topBallEdge = ballY - constants.BALL_SIZE / 2 + ballSpeedY;
+
+        var eventTriggers = {};
+        if (rightBallEdge > bottomRightCoordinate.x) { // right
+            ballX = bottomRightCoordinate.x - (constants.BALL_SIZE / 2);
+            score.player1++;
             ballSpeedX *= -1;
             xChanged = true;
-        } else if ((ballX - constants.BALL_SIZE / 2) + ballSpeedX <= 0) { // left
+            eventTriggers.right = true;
+        } else if (leftBallEdge <= topLeftCoordinate.x) { // left
             ballX = constants.BALL_SIZE / 2;
             ballSpeedX *= -1;
+            score.player2++;
             xChanged = true;
+            eventTriggers.left = true;
         }
 
-        if (ballY + (constants.BALL_SIZE / 2) + ballSpeedY > constants.CANVAS_HEIGHT) { // bottom
-            ballY = constants.CANVAS_HEIGHT - ( constants.BALL_SIZE / 2);
+        if (bottomBallEdge > bottomRightCoordinate.y) { // bottom
+            ballY = constants.CANVAS_BOUNDS.y - ( constants.BALL_SIZE / 2);
             ballSpeedY *= -1;
             yChanged = true;
-        } else if ((ballY - constants.BALL_SIZE / 2) + ballSpeedY <= 0) { // top
+            eventTriggers.bottom = true;
+        } else if (topBallEdge <= topLeftCoordinate.y) { // top
             ballY = constants.BALL_SIZE / 2;
             ballSpeedY *= -1;
             yChanged = true;
+            eventTriggers.top = true;
         }
-
         if (!xChanged) ballX += ballSpeedX;
         if (!yChanged) ballY += ballSpeedY;
+        return eventTriggers;
     }
 
     function updatePaddleState() {
@@ -92,18 +121,20 @@ var constants = {
     function updateGameState() {
         updateBallState();
         updatePaddleState();
-        if (ballX == constants.BALL_SIZE / 2) {
-            console.log("left-edge: " + ballX);
-        }
-        if (ballX + constants.BALL_SIZE / 2 == constants.CANVAS_WIDTH) {
-            console.log("right-edge: " + (ballX + constants.BALL_SIZE));
-        }
-        if (ballY < 6) {
-            console.log("top: " + ballY);
-        }
-        if (ballY + constants.BALL_SIZE / 2 == constants.CANVAS_HEIGHT) {
-            console.log("bottom: " + (ballY + constants.BALL_SIZE));
-        }
+        /*
+         if (ballX == constants.BALL_SIZE / 2) {
+         console.log("left-edge: " + ballX);
+         }
+         if (ballX + constants.BALL_SIZE / 2 == constants.CANVAS_BOUNDS.x) {
+         console.log("right-edge: " + (ballX + constants.BALL_SIZE));
+         }
+         if (ballY < 6) {
+         console.log("top: " + ballY);
+         }
+         if (ballY + constants.BALL_SIZE / 2 == constants.CANVAS_BOUNDS.y) {
+         console.log("bottom: " + (ballY + constants.BALL_SIZE));
+         }
+         */
     }
 
     function drawCircle(centerX, centerY, radius, fillColor) {
@@ -121,11 +152,12 @@ var constants = {
 
         canvasContext.fillStyle = "white";
         drawCenterLine();
+        drawScores();
         drawCircle(ballX, ballY, constants.BALL_SIZE / 2, "white");
 
 
         canvasContext.fillRect(5, player1PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
-        canvasContext.fillRect(constants.CANVAS_WIDTH - 5 - constants.PADDLE_WIDTH, player2PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
+        canvasContext.fillRect(constants.CANVAS_BOUNDS.x - 5 - constants.PADDLE_WIDTH, player2PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
     }
 
     function getRenderingLoop() {
@@ -162,4 +194,4 @@ var constants = {
     initGameState();
     startGame();
 
-})(jQuery);
+})(jQuery, _);
