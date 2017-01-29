@@ -6,7 +6,10 @@ var constants = {
     BALL_SIZE: 10,
     PADDLE_WIDTH: 10,
     PADDLE_HEIGHT: 125,
-    BALL_BOUNCE: new Audio("sounds/paddle.wav")
+    SOUNDS: {
+        BALL_BOUNCE: new Audio("sounds/paddle.wav")
+    },
+    CENTER_LINE_WIDTH: 2
 };
 
 (function ($) {
@@ -44,6 +47,16 @@ var constants = {
         renderAll();
     }
 
+    function drawCenterLine() {
+        var dashSize = 75,
+            spaceSize = 25
+        dashes = constants.CANVAS_HEIGHT / 100;
+        for (var i = 0; i < dashes; i++) {
+            canvasContext.fillRect(constants.CANVAS_WIDTH / 2 - constants.CENTER_LINE_WIDTH / 2,
+                i ? (dashSize + spaceSize) * i + spaceSize / 2 : spaceSize / 2, constants.CENTER_LINE_WIDTH, dashSize);
+        }
+    }
+
     function updateBallState() {
         var xChanged = false;
         var yChanged = false;
@@ -51,7 +64,7 @@ var constants = {
             ballX = constants.CANVAS_WIDTH - (constants.BALL_SIZE / 2);
             ballSpeedX *= -1;
             xChanged = true;
-        } else if ( (ballX - constants.BALL_SIZE / 2) + ballSpeedX <= 0) { // left
+        } else if ((ballX - constants.BALL_SIZE / 2) + ballSpeedX <= 0) { // left
             ballX = constants.BALL_SIZE / 2;
             ballSpeedX *= -1;
             xChanged = true;
@@ -73,6 +86,7 @@ var constants = {
 
     function updatePaddleState() {
         player1PaddleTop = mousePosition.y - constants.PADDLE_HEIGHT / 2;
+        player2PaddleTop = mousePosition.y - constants.PADDLE_HEIGHT / 2;
     }
 
     function updateGameState() {
@@ -85,11 +99,9 @@ var constants = {
             console.log("right-edge: " + (ballX + constants.BALL_SIZE));
         }
         if (ballY < 6) {
-            //constants.BALL_BOUNCE.play();
             console.log("top: " + ballY);
         }
         if (ballY + constants.BALL_SIZE / 2 == constants.CANVAS_HEIGHT) {
-            //constants.BALL_BOUNCE.play();
             console.log("bottom: " + (ballY + constants.BALL_SIZE));
         }
     }
@@ -106,12 +118,14 @@ var constants = {
     function renderAll() {
         canvasContext.fillStyle = "black";
         canvasContext.fillRect(0, 0, canvas.attr('width'), canvas.attr('height'));
-        canvasContext.fillStyle = "white";
 
+        canvasContext.fillStyle = "white";
+        drawCenterLine();
         drawCircle(ballX, ballY, constants.BALL_SIZE / 2, "white");
 
 
         canvasContext.fillRect(5, player1PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
+        canvasContext.fillRect(constants.CANVAS_WIDTH - 5 - constants.PADDLE_WIDTH, player2PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
     }
 
     function getRenderingLoop() {
