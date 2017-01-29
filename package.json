@@ -7,5 +7,8 @@
     "start": "autoreload-server --default-pages \"index.{htm,html}\" -w \"**/**.{html,css,js}\" ./ 8008"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "simple-autoreload-server": "^0.2.6"
+  }
 }
