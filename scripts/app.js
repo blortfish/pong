@@ -19,8 +19,8 @@ var constants = {
     var canvas, canvasDOM, canvasContext, renderingLoop, gameStateLoop;
     var mousePosition;
     var player1PaddleTop, player2PaddleTop;
-    var ballX,
-        ballY,
+    var ballX = 10,
+        ballY = 10,
         ballSpeedX,
         ballSpeedY,
         score = {
@@ -70,47 +70,90 @@ var constants = {
     }
 
     function updateBallState() {
-        ballWillContactRect({x : 0, y: 0}, constants.CANVAS_BOUNDS);
-
+        var ballCenterPointOffset = constants.BALL_SIZE / 2;
+        ballWillContactBounds({x: 0, y: 0}, constants.CANVAS_BOUNDS, {
+            left: function () {
+                score.player2++;
+                ballSpeedX *= -1;
+                ballX = constants.BALL_SIZE / 2;
+            },
+            right: function () {
+                score.player1++;
+                ballSpeedX *= -1;
+                ballX = constants.CANVAS_BOUNDS.x - ballCenterPointOffset;
+            },
+            bottom: function () {
+                ballY = constants.CANVAS_BOUNDS.y - ballCenterPointOffset;
+                ballSpeedY *= -1;
+            },
+            top: function () {
+                ballY = ballCenterPointOffset;
+                ballSpeedY *= -1;
+            },
+            noContact:function () {
+                ballX += ballSpeedX;
+                ballY += ballSpeedY;
+            }
+        });
+        ballWillContactRect({x: 15, y: player1PaddleTop}, {x: 15, y: player1PaddleTop + constants.PADDLE_HEIGHT}, {
+            right: function () {
+                ballSpeedX *= -1;
+            },
+            left: function () {
+                ballSpeedX *= -1;
+            }
+        });
     }
-
-    function ballWillContactRect(topLeftCoordinate, bottomRightCoordinate) {
-        var xChanged = false;
-        var yChanged = false;
+    
+    function ballWillContactRect(topLeftCoordinate, bottomRightCoordinate, triggers) {
         var rightBallEdge = ballX + constants.BALL_SIZE / 2 + ballSpeedX;
         var leftBallEdge = ballX - constants.BALL_SIZE / 2 + ballSpeedX;
         var bottomBallEdge = ballY + constants.BALL_SIZE / 2 + ballSpeedY;
         var topBallEdge = ballY - constants.BALL_SIZE / 2 + ballSpeedY;
 
-        var eventTriggers = {};
-        if (rightBallEdge > bottomRightCoordinate.x) { // right
-            ballX = bottomRightCoordinate.x - (constants.BALL_SIZE / 2);
-            score.player1++;
-            ballSpeedX *= -1;
-            xChanged = true;
-            eventTriggers.right = true;
-        } else if (leftBallEdge <= topLeftCoordinate.x) { // left
-            ballX = constants.BALL_SIZE / 2;
-            ballSpeedX *= -1;
-            score.player2++;
-            xChanged = true;
-            eventTriggers.left = true;
+        if (triggers.right &&
+            leftBallEdge <= constants.PADDLE_WIDTH + 5 &&
+            topBallEdge >= player1PaddleTop &&
+            bottomBallEdge <= player1PaddleTop + constants.PADDLE_HEIGHT){
+            triggers.right();
+            return;
+        }
+        if (triggers.left &&
+            rightBallEdge >= constants.CANVAS_BOUNDS.x - (constants.PADDLE_WIDTH + 5)   &&
+            topBallEdge >= player2PaddleTop &&
+            bottomBallEdge <= player2PaddleTop + constants.PADDLE_HEIGHT){
+            triggers.left();
+            return;
+        }
+    }
+
+    function ballWillContactBounds(topLeftCoordinate, bottomRightCoordinate, triggers) {
+
+        var rightBallEdge = ballX + constants.BALL_SIZE / 2 + ballSpeedX;
+        var leftBallEdge = ballX - constants.BALL_SIZE / 2 + ballSpeedX;
+        var bottomBallEdge = ballY + constants.BALL_SIZE / 2 + ballSpeedY;
+        var topBallEdge = ballY - constants.BALL_SIZE / 2 + ballSpeedY;
+
+        if (triggers.right && rightBallEdge > bottomRightCoordinate.x){
+            triggers.right();
+            return;
+        }
+        if (triggers.left && leftBallEdge <= topLeftCoordinate.x){
+            triggers.left();
+            return;
+        }
+        if (triggers.bottom && bottomBallEdge > bottomRightCoordinate.y){
+            triggers.bottom();
+            return;
+        }
+        if (triggers.top && topBallEdge <= topLeftCoordinate.y){
+            triggers.top();
+            return;
+        }
+        if(triggers.noContact){
+            triggers.noContact();
         }
 
-        if (bottomBallEdge > bottomRightCoordinate.y) { // bottom
-            ballY = constants.CANVAS_BOUNDS.y - ( constants.BALL_SIZE / 2);
-            ballSpeedY *= -1;
-            yChanged = true;
-            eventTriggers.bottom = true;
-        } else if (topBallEdge <= topLeftCoordinate.y) { // top
-            ballY = constants.BALL_SIZE / 2;
-            ballSpeedY *= -1;
-            yChanged = true;
-            eventTriggers.top = true;
-        }
-        if (!xChanged) ballX += ballSpeedX;
-        if (!yChanged) ballY += ballSpeedY;
-        return eventTriggers;
     }
 
     function updatePaddleState() {
@@ -121,20 +164,6 @@ var constants = {
     function updateGameState() {
         updateBallState();
         updatePaddleState();
-        /*
-         if (ballX == constants.BALL_SIZE / 2) {
-         console.log("left-edge: " + ballX);
-         }
-         if (ballX + constants.BALL_SIZE / 2 == constants.CANVAS_BOUNDS.x) {
-         console.log("right-edge: " + (ballX + constants.BALL_SIZE));
-         }
-         if (ballY < 6) {
-         console.log("top: " + ballY);
-         }
-         if (ballY + constants.BALL_SIZE / 2 == constants.CANVAS_BOUNDS.y) {
-         console.log("bottom: " + (ballY + constants.BALL_SIZE));
-         }
-         */
     }
 
     function drawCircle(centerX, centerY, radius, fillColor) {
@@ -154,7 +183,6 @@ var constants = {
         drawCenterLine();
         drawScores();
         drawCircle(ballX, ballY, constants.BALL_SIZE / 2, "white");
-
 
         canvasContext.fillRect(5, player1PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
         canvasContext.fillRect(constants.CANVAS_BOUNDS.x - 5 - constants.PADDLE_WIDTH, player2PaddleTop, constants.PADDLE_WIDTH, constants.PADDLE_HEIGHT);
